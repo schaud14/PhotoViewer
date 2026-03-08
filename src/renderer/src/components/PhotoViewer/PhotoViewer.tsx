@@ -91,17 +91,19 @@ export default function PhotoViewer() {
 
   const wasOpenRef = useRef(false)
 
-  // Center active photo in filmstrip (Robust Mathematical Scrolling)
+  // Center active photo in filmstrip (Mathematical)
   useEffect(() => {
     if (photoViewerOpen && currentPhotoId && photos.length > 0) {
-      // If the user caused this via trackpad swipe on the filmstrip, do NOT fight their swipe!
       if (isTrackpadRef.current) {
-        isTrackpadRef.current = false 
+        if (scrollTimeout.current) clearTimeout(scrollTimeout.current)
+        scrollTimeout.current = setTimeout(() => {
+          isTrackpadRef.current = false
+        }, 300)
         return
       }
 
       const index = photos.findIndex((p) => p.id === currentPhotoId)
-      if (index >= 0 && filmstripRef.current) {
+      if (index >= 0) {
         const scrollToTarget = () => {
           if (filmstripRef.current && !isTrackpadRef.current) {
             isAutoScrolling.current = true
@@ -112,20 +114,24 @@ export default function PhotoViewer() {
             if (!wasOpenRef.current) wasOpenRef.current = true
             
             if (scrollTimeout.current) clearTimeout(scrollTimeout.current)
+            // Extra grace period for trackpad scroll lock
             scrollTimeout.current = setTimeout(() => {
               isAutoScrolling.current = false
-            }, 500)
+            }, 800)
           }
         }
         
-        // Polling to handle early-paint width resolution (0px width bug)
         requestAnimationFrame(scrollToTarget)
-        setTimeout(scrollToTarget, 50)
-        setTimeout(scrollToTarget, 150)
-        setTimeout(scrollToTarget, 300)
+        // Ensure jump works across component mount layout states
+        if (!wasOpenRef.current) {
+          setTimeout(scrollToTarget, 50)
+          setTimeout(scrollToTarget, 150)
+          setTimeout(scrollToTarget, 400)
+        }
       }
     } else if (!photoViewerOpen) {
       wasOpenRef.current = false
+      isAutoScrolling.current = false
     }
   }, [currentPhotoId, photoViewerOpen, photos])
 
@@ -710,8 +716,11 @@ export default function PhotoViewer() {
         <Box
           ref={filmstripRef}
           onScroll={(e) => {
-            if (isAutoScrolling.current) return
+            if (isAutoScrolling.current || !wasOpenRef.current) return
+            
             const scrollLeft = e.currentTarget.scrollLeft
+            if (scrollLeft === 0 && currentPhotoId !== photos[0]?.id) return
+            
             const index = Math.round(scrollLeft / 86)
             if (index >= 0 && index < photos.length) {
               const newId = photos[index].id
@@ -731,9 +740,8 @@ export default function PhotoViewer() {
             alignItems: 'center',
             overflowX: 'auto',
             overflowY: 'hidden',
-            paddingLeft: 'calc(50% - 43px)',
-            paddingRight: 'calc(50% - 43px)',
-            scrollSnapType: 'x mandatory',
+            paddingLeft: 'calc(50vw - 43px)',
+            paddingRight: 'calc(50vw - 43px)',
             background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
             zIndex: 10,
             '&::-webkit-scrollbar': { display: 'none' },
@@ -747,17 +755,17 @@ export default function PhotoViewer() {
                 data-photoid={p.id}
                 onClick={() => setCurrentPhoto(p.id)}
                 sx={{
+                  boxSizing: 'border-box',
                   flexShrink: 0,
                   width: 70, height: 70,
                   margin: '0 8px',
-                  scrollSnapAlign: 'center',
                   borderRadius: '4px',
                   overflow: 'hidden',
                   cursor: 'pointer',
                   transition: 'transform 0.2s, opacity 0.2s',
                   transform: isSelected ? 'scale(1.3)' : 'scale(1)',
                   opacity: isSelected ? 1 : 0.5,
-                  border: isSelected ? '2px solid #7C4DFF' : 'none',
+                  border: isSelected ? '2px solid #7C4DFF' : '2px solid transparent',
                   zIndex: isSelected ? 2 : 1,
                   '&:hover': { opacity: isSelected ? 1 : 0.8 },
                 }}
