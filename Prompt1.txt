@@ -1,0 +1,16 @@
+I want to create MacOS app for seemless photo viewer. I have to create albums from the folder and photos.
+I should be able to tag photos. Search based on Tags.
+I should be able to view photos from mac os folder.
+Alternatively I should be able to see photos from created albums.
+I want ability to create album in following ways
+1. Virtual Album where photos stay is original locations in MAC OS but get tagged with album
+2. Physical Album where - Album create a folder in Mac OS and moves the photo into it.
+3. A photo can be in only one physical Album but can be multiple virtual Album
+Each ablum can contain either all physical or all Virtual Photos.
+I want seemless ability to scan photos, next previosus, Grid View with diff size. List view.
+I want ablity to see Photo's metadata. Side panel option to show metadata.
+Delete option for photo.
+Trash for deleted photos.
+Virtual Album deletes not to be trashed. All physical photos should be moved to trash once deleted.
+there should be option to restore to original location.
+Conceptually I want to build an app lile picasa from google which was available ages ago.

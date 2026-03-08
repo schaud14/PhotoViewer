@@ -1,0 +1,72 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+img {
+  -webkit-user-drag: none;
+}
+
+/* Smooth transitions for panel open/close */
+.panel-transition {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease;
+}
+
+/* Photo grid item hover effect */
+.photo-grid-item {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+}
+
+.photo-grid-item:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Selected photo highlight */
+.photo-selected {
+  outline: 2px solid #7C4DFF;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Fade-in animation for photos loading */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+/* Drag and drop highlight */
+.drop-target {
+  background-color: rgba(124, 77, 255, 0.1) !important;
+  border: 2px dashed #7C4DFF !important;
+}
+/* Loading spinner animation */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Trash Animation (Shrink + Fade) */
+.photo-deleting {
+  opacity: 0 !important;
+  transform: scale(0.5) !important;
+  transition: opacity 0.3s ease-in, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  pointer-events: none;
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}

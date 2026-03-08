@@ -1,0 +1,193 @@
+Coding prompt for an Electron + React photo viewer
+You are an expert Electron and React developer.
+Build a cross‑platform desktop photo viewer and organizer (Windows/macOS/Linux) using Electron + React, conceptually similar to Google Picasa’s desktop app.
+Tech stack
+	•	Electron (latest stable) for desktop shell and file system access.
+	•	React (with hooks) for the renderer UI.
+	•	Use a modern tooling setup (e.g., Electron Forge + React + Vite or CRA) and TypeScript if convenient.
+	•	Use IPC ( ipcMain ,  ipcRenderer ) and contextBridge with a  preload.js  to safely expose file‑system APIs from the main process to React.
+High‑level app behavior
+	•	Primary goal: fast, seamless photo viewing from folders on disk with tagging and album management.
+	•	The UI and flows should feel similar to Picasa:
+	•	Scan folders into a library.
+	•	Organize photos into albums.
+	•	Browse in grid, list, or single‑photo viewer.
+File system and security
+	•	All direct file system access (scanning folders, reading images, moving files, trash behavior) must happen in the Electron main process or a Node context, not directly from React.
+	•	Use:
+	•	 dialog.showOpenDialog  to choose source folders.
+	•	Node  fs  /  path  for file operations.
+	•	Images can be:
+	•	Referenced via  file://  URLs when appropriate, or
+	•	Loaded via a custom protocol / base64 when needed for production builds (handle dev vs prod paths correctly).
+Functional requirements
+1. Library and source folders
+	•	User can add one or more “source” folders.
+	•	App recursively scans these folders for image types (JPEG, PNG, HEIC, etc.) and indexes them.
+	•	Persist a local library database (e.g., JSON, SQLite, better‑sqlite3, or lowdb):
+	•	 Photo :
+	•	 id 
+	•	 absolutePath 
+	•	 originalPath  (for restore)
+	•	 fileName 
+	•	 size 
+	•	 createdAt ,  modifiedAt 
+	•	EXIF/metadata (date taken, camera, etc. – store as nested object)
+	•	 tags: string[] 
+	•	 albumIds: string[]  (for virtual membership)
+	•	 physicalAlbumId?: string | null 
+	•	 trashed: boolean 
+	•	 Album :
+	•	 id 
+	•	 name 
+	•	 type: 'virtual' | 'physical' 
+	•	 folderPath?  (for physical)
+	•	 Settings :
+	•	List of source folders, configurable paths for Trash, etc.
+	•	Implement a background scan:
+	•	Runs in a worker or as an async process; sends progress updates to the renderer via IPC.
+	•	Detects new, removed, or changed files.
+2. Albums model and rules
+Implement two album types:
+	•	VirtualAlbum
+	•	Does not move any files.
+	•	Stores references to photos by id.
+	•	A photo can be in multiple virtual albums.
+	•	PhysicalAlbum
+	•	Backed by a real folder on disk.
+	•	When a photo is added:
+	•	Move the file to the physical album folder.
+	•	Update  absolutePath  and  physicalAlbumId  in the DB.
+	•	A photo can be in only one physical album.
+	•	Each album is either virtual or physical; no mixing.
+Main process album APIs (exposed via IPC):
+	•	 createAlbum({ name, type, basePath? }) 
+	•	For physical albums, create a folder inside a chosen root directory.
+	•	 addPhotosToAlbum({ albumId, photoIds[] }) 
+	•	Enforce constraints above.
+	•	 removePhotoFromAlbum({ albumId, photoId }) 
+	•	For physical, move back to source/original root or mark as “unassigned” (define a clear policy).
+3. Tagging and search
+	•	Tag model:
+	•	Each photo has  tags: string[] .
+	•	UI:
+	•	In the right‑side metadata panel, allow adding/removing tags with an editable chips input.
+	•	Provide tag suggestions/autocomplete based on existing tags in the library.
+	•	Search:
+	•	Global search bar in the top toolbar.
+	•	Filters photos by:
+	•	Tag text.
+	•	File name.
+	•	Optionally EXIF date.
+	•	Search can operate:
+	•	On all photos.
+	•	Or limited to the currently selected album (toggle).
+Implementation details:
+	•	Debounce search input.
+	•	Case‑insensitive substring match.
+4. Views and navigation (React UI)
+Main window layout:
+	•	Left sidebar:
+	•	Sections:
+	•	“All Photos”
+	•	“Source Folders”
+	•	“Albums”
+	•	“Trash”
+	•	Each album entry should show an icon or label for Virtual vs Physical.
+	•	Top toolbar:
+	•	Buttons:
+	•	Add folder
+	•	New virtual album
+	•	New physical album
+	•	View toggle: Grid / List
+	•	Toggle metadata panel
+	•	Search input.
+	•	Main content area:
+	•	Grid View:
+	•	Thumbnails in a responsive grid.
+	•	Options for small/medium/large thumbnail sizes.
+	•	Lazy loading / virtualized list for performance.
+	•	List View:
+	•	Rows with thumbnail, file name, key metadata, tags.
+	•	Sort by date, name, folder.
+	•	Clicking a photo opens Single Photo View (maybe overlay or separate route):
+	•	Large view of the image.
+	•	Keyboard navigation:
+	•	Left/Right arrows to move previous/next within the filtered set.
+	•	Esc to go back to grid/list.
+Use a router or simple internal state to manage which view is active.
+5. Metadata side panel
+	•	Right‑side collapsible panel that shows when a photo is selected.
+	•	Display:
+	•	File name and full path.
+	•	File size.
+	•	Created/modified times.
+	•	EXIF data (date taken, camera, lens, exposure, ISO, etc.).
+	•	Tags (editable).
+	•	Albums (virtual + physical membership).
+	•	Panel can be toggled from toolbar.
+	•	Use an EXIF parsing library in the Node/main layer or renderer with careful file access.
+6. Delete, Trash, and restore logic
+Define consistent delete semantics:
+	•	“Delete” from a virtual album:
+	•	Remove the photo from that album only.
+	•	Do not move the file to Trash.
+	•	“Delete” from a physical album or from All Photos:
+	•	Move the underlying file to an app‑specific Trash folder (on disk).
+	•	Mark  trashed: true  and store  originalPath  for restore.
+Trash section:
+	•	In sidebar, “Trash” shows all trashed photos.
+	•	For each trashed photo:
+	•	Actions:
+	•	Restore:
+	•	Move file from Trash folder back to  originalPath  (or ask user to choose a new folder if missing).
+	•	Clear  trashed  flag and re‑establish original album memberships.
+	•	Permanently delete:
+	•	Remove file from disk.
+	•	Remove photo from DB.
+Be careful with file moves and collisions:
+	•	If  originalPath  already has a file:
+	•	Option: prompt for overwrite, rename, or cancel.
+7. Performance, caching, and image loading
+	•	Use the main process / Node for:
+	•	Thumbnail generation (e.g., using  sharp  or nativeImage).
+	•	Metadata extraction.
+	•	Cache thumbnails (e.g., in a  .cache  subfolder) and store paths in the DB.
+	•	In React:
+	•	Use lazy loading and virtualization (e.g.,  react-window ) for large grids.
+	•	Ensure images load correctly in both development and production:
+	•	Handle  file://  paths, packaging, and any custom protocols needed.
+Architecture
+	•	Main Process (Electron):
+	•	Window creation, menus.
+	•	File system, albums, trash, thumbnailing, metadata extraction.
+	•	IPC handlers for all library actions.
+	•	Preload script:
+	•	Use  contextBridge.exposeInMainWorld  to expose a  window.api  with:
+	•	 selectSourceFolders() 
+	•	 scanSources() 
+	•	 getPhotos(filters) 
+	•	 createAlbum() ,  addPhotosToAlbum() , etc.
+	•	 deletePhoto() ,  restorePhoto() ,  getTrash() 
+	•	Renderer (React):
+	•	App shell, routing, view switching.
+	•	State management (Redux, Zustand, or React context) for:
+	•	Current view, selection, filters.
+	•	Cached library slices returned from IPC.
+	•	Components:
+	•	Sidebar
+	•	Toolbar
+	•	PhotoGrid
+	•	PhotoList
+	•	PhotoViewer
+	•	MetadataPanel
+	•	Album dialogs
+Add a short README:
+	•	How to run:
+	•	 npm install 
+	•	 npm run dev  (for Electron + React dev)
+	•	 npm run build  /  npm run make  to package.
+	•	Development notes:
+	•	Folder access permissions (especially on macOS).
+	•	Where the local DB and thumbnails are stored.
+If you’d like, next I can draft the folder structure and starter files (e.g.,  main.js ,  preload.js ,  renderer/src/App.tsx , and a basic IPC API) so you can paste them into a new project and run it immediately.
