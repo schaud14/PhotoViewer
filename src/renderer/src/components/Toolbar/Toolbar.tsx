@@ -110,7 +110,7 @@ export default function AppToolbar({ onAddFolder, onCreateAlbum }: ToolbarProps)
       <MuiToolbar sx={{ gap: 1.5 }}>
         {/* App Logo & Title */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: 1 }}>
-          <img src={logo} alt="PhotoViewer Logo" style={{ width: 42, height: 42, objectFit: 'contain' }} />
+          <img src={logo} alt="PhotoViewer Logo" style={{ width: 42, height: 42, objectFit: 'contain', borderRadius: '18%' }} />
           <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.5px', background: 'linear-gradient(135deg, #7C4DFF, #00E5FF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             PhotoViewer
           </Typography>
