@@ -1,5 +1,5 @@
 import { app, BrowserWindow, shell, nativeImage } from 'electron'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDatabase } from './db/database'
 import { registerLibraryHandlers } from './ipc/library'
@@ -52,9 +52,15 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   // Set Dock icon on macOS
   if (process.platform === 'darwin') {
-    const iconPath = join(__dirname, '../../resources/icon.png')
+    const iconPath = resolve(__dirname, '../../resources/icon.png')
+    console.log('Setting Dock icon from:', iconPath)
     const image = nativeImage.createFromPath(iconPath)
-    app.dock.setIcon(image)
+    if (image.isEmpty()) {
+      console.error('Failed to load icon image from:', iconPath)
+    } else {
+      app.dock.setIcon(image)
+      console.log('Dock icon set successfully')
+    }
   }
 
   // Set app user model id for Windows
