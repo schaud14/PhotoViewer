@@ -110,7 +110,16 @@ export default function AppToolbar({ onAddFolder, onCreateAlbum }: ToolbarProps)
       <MuiToolbar sx={{ gap: 1.5 }}>
         {/* App Logo & Title */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: 1 }}>
-          <img src={logo} alt="PhotoViewer Logo" style={{ width: 42, height: 42, objectFit: 'contain', borderRadius: '18%' }} />
+          <img 
+            src={logo} 
+            alt="PhotoViewer Logo" 
+            style={{ 
+              width: 42, 
+              height: 42, 
+              objectFit: 'contain',
+              clipPath: 'inset(0% round 18%)' // Professional squircle clip to hide AI checkerboard
+            }} 
+          />
           <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.5px', background: 'linear-gradient(135deg, #7C4DFF, #00E5FF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             PhotoViewer
           </Typography>
