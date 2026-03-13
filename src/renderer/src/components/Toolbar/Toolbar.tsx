@@ -38,6 +38,7 @@ import { useLibraryStore } from '../../stores/libraryStore'
 import { useAlbumStore } from '../../stores/albumStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import SettingsDialog from '../Dialogs/SettingsDialog'
+import logo from '../../assets/logo.png'
 
 interface ToolbarProps {
   onAddFolder: () => void
@@ -107,10 +108,13 @@ export default function AppToolbar({ onAddFolder, onCreateAlbum }: ToolbarProps)
   return (
     <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
       <MuiToolbar sx={{ gap: 1.5 }}>
-        {/* App title */}
-        <Typography variant="h6" sx={{ fontWeight: 700, mr: 1, background: 'linear-gradient(135deg, #7C4DFF, #00E5FF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          PhotoViewer
-        </Typography>
+        {/* App Logo & Title */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mr: 1 }}>
+          <img src={logo} alt="PhotoViewer Logo" style={{ width: 32, height: 32, objectFit: 'contain' }} />
+          <Typography variant="h6" sx={{ fontWeight: 700, background: 'linear-gradient(135deg, #7C4DFF, #00E5FF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            PhotoViewer
+          </Typography>
+        </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.6, mr: 2 }}>
           <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 400, mx: 1 }}>/</Typography>
