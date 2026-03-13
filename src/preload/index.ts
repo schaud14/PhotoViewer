@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS, PhotoFilters } from '../shared/types'
-import type { Photo, Album, SourceFolder, ScanProgress, TrashRestoreResult, LightTable, LightTablePhoto } from '../shared/types'
+import type { Photo, Album, SourceFolder, ScanProgress, TrashRestoreResult, LightTable, LightTablePhoto, Person } from '../shared/types'
 
 // Expose protected APIs to the renderer process via contextBridge
 const api = {
@@ -144,6 +144,22 @@ const api = {
 
   deleteLightTable: (id: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.DELETE_LIGHT_TABLE, id),
+
+  // Faces
+  getPeople: (): Promise<Person[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_PEOPLE),
+
+  getFacesForPerson: (personId: string): Promise<any[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_FACES_FOR_PERSON, personId),
+
+  renamePerson: (personId: string, name: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RENAME_PERSON, personId, name),
+
+  setCoverPhoto: (personId: string, photoId: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SET_COVER_PHOTO, personId, photoId),
+
+  resetFaces: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RESET_FACES),
 }
 
 contextBridge.exposeInMainWorld('api', api)

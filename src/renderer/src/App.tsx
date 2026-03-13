@@ -9,6 +9,7 @@ import MetadataPanel, { METADATA_PANEL_WIDTH } from './components/MetadataPanel/
 import CreateAlbumDialog from './components/Dialogs/CreateAlbumDialog'
 import DuplicatesView from './components/DuplicatesView/DuplicatesView'
 import LightTableView from './components/LightTable/LightTableView'
+import PeopleView from './components/PeopleView/PeopleView'
 import { useUIStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { useAlbumStore } from './stores/albumStore'
@@ -25,6 +26,7 @@ export default function App() {
   const setScanProgress = useLibraryStore((s) => s.setScanProgress)
   const createAlbum = useAlbumStore((s) => s.createAlbum)
   const sidebarSection = useUIStore((s) => s.sidebarSection)
+  const setSidebarSection = useUIStore((s) => s.setSidebarSection)
 
   const [sourceFolders, setSourceFolders] = useState<SourceFolder[]>([])
   const [albumDialogOpen, setAlbumDialogOpen] = useState(false)
@@ -35,6 +37,7 @@ export default function App() {
 
   // Load initial data
   useEffect(() => {
+    useSettingsStore.getState().fetchSettings()
     fetchPhotos()
     loadSourceFolders()
 
@@ -141,6 +144,11 @@ export default function App() {
     setAlbumDialogOpen(false)
   }, [createAlbum])
 
+  const handlePersonClick = useCallback((personId: string) => {
+    useLibraryStore.getState().setFilters({ personId })
+    setSidebarSection('all')
+  }, [setSidebarSection])
+
   const mainContentWidth = metadataPanelOpen
     ? `calc(100% - ${SIDEBAR_WIDTH}px - ${METADATA_PANEL_WIDTH}px)`
     : `calc(100% - ${SIDEBAR_WIDTH}px)`
@@ -172,6 +180,8 @@ export default function App() {
         >
           {sidebarSection === 'duplicates' ? (
             <DuplicatesView />
+          ) : sidebarSection === 'people' ? (
+            <PeopleView onPersonClick={handlePersonClick} />
           ) : sidebarSection.startsWith('lightTable-') ? (
             <LightTableView tableId={sidebarSection.replace('lightTable-', '')} />
           ) : viewMode === 'grid' ? (

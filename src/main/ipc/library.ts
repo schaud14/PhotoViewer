@@ -40,6 +40,12 @@ async function scanDirectory(dirPath: string): Promise<string[]> {
 }
 
 export function registerLibraryHandlers(db: Database.Database): void {
+  // Get thumbnail path for a photo (used by PeopleView)
+  ipcMain.handle(IPC_CHANNELS.GET_THUMBNAIL, async (_event, photoId: string) => {
+    const row = db.prepare('SELECT thumbnailPath FROM photos WHERE id = ?').get(photoId) as { thumbnailPath: string } | undefined
+    return row?.thumbnailPath || null
+  })
+
   // Select source folders via native dialog
   ipcMain.handle(IPC_CHANNELS.SELECT_SOURCE_FOLDERS, async () => {
     const window = BrowserWindow.getFocusedWindow()
@@ -92,6 +98,28 @@ export function registerLibraryHandlers(db: Database.Database): void {
       })
 
       const filePaths = await scanDirectory(folder.path)
+      const filePathsSet = new Set(filePaths)
+
+      // Phase 1a: Remove missing files
+      const existingInFolder = db.prepare(`SELECT id, absolutePath FROM photos WHERE absolutePath LIKE ?`).all(`${folder.path}%`) as { id: string, absolutePath: string }[]
+      const missingIds: string[] = []
+      
+      for (const row of existingInFolder) {
+        if (!filePathsSet.has(row.absolutePath)) {
+          missingIds.push(row.id)
+        }
+      }
+
+      if (missingIds.length > 0) {
+        // SQLite has a limit on the number of host parameters (typically 999 or 32766)
+        // We chunk the deletes to be safe
+        const chunk = 500
+        for (let i = 0; i < missingIds.length; i += chunk) {
+          const idsChunk = missingIds.slice(i, i + chunk)
+          const deleteParams = idsChunk.map(() => '?').join(',')
+          db.prepare(`DELETE FROM photos WHERE id IN (${deleteParams})`).run(...idsChunk)
+        }
+      }
 
       const insertStmt = db.prepare(`
         INSERT OR IGNORE INTO photos (id, absolutePath, originalPath, fileName, fileSize, createdAt, modifiedAt, trashed)
@@ -190,6 +218,87 @@ export function registerLibraryHandlers(db: Database.Database): void {
       }
     }
 
+    // --- Phase 3: Face Detection ---
+    const settings = db.prepare('SELECT enableFaceDetection FROM app_settings WHERE id = 1').get() as { enableFaceDetection: number } | undefined
+    if (settings?.enableFaceDetection) {
+      const photosNeedingFaces = db.prepare(
+        `SELECT id, absolutePath FROM photos WHERE facesScanned = 0 AND trashed = 0`
+      ).all() as { id: string; absolutePath: string }[]
+
+      if (photosNeedingFaces.length > 0) {
+        window?.webContents.send(IPC_CHANNELS.SCAN_PROGRESS, {
+          status: 'scanning',
+          currentFile: 'Initializing Machine Learning engine...',
+          processed: 0,
+          total: photosNeedingFaces.length
+        })
+
+        await new Promise<void>((resolve, reject) => {
+          const { Worker } = require('worker_threads')
+          const path = require('path')
+          const { app } = require('electron')
+          
+          // We rely on the `facesWorker` entry point dynamically bundled into `out/main`
+          const workerPath = path.join(__dirname, 'facesWorker.js')
+          const dbPath = path.join(app.getPath('userData'), 'data', 'photoviewer.db')
+          // Using project root in dev
+          const modelsPath = app.isPackaged 
+            ? path.join(process.resourcesPath, 'models') 
+            : path.join(process.cwd(), 'resources', 'models')
+
+          console.log('[Scanner] Worker Path:', workerPath)
+          console.log('[Scanner] Models Path:', modelsPath)
+          console.log('[Scanner] DB Path:', dbPath)
+          console.log('[Scanner] __dirname:', __dirname)
+
+          const worker = new Worker(workerPath, {
+            workerData: { photos: photosNeedingFaces, dbPath, modelsPath }
+          })
+
+          worker.on('message', (message: { type: string, data: any }) => {
+            if (message.type === 'progress') {
+              window?.webContents.send(IPC_CHANNELS.SCAN_PROGRESS, {
+                status: 'scanning',
+                currentFile: message.data.file || 'Analyzing Faces...',
+                processed: message.data.current || 0,
+                total: message.data.total || photosNeedingFaces.length
+              })
+            } else if (message.type === 'done') {
+              const { faces, newPeople } = message.data as { 
+                faces: any[], 
+                newPeople: { id: string, coverPhotoId: string }[] 
+              }
+
+              const insertPerson = db.prepare('INSERT OR IGNORE INTO people (id, coverPhotoId) VALUES (?, ?)')
+              const insertFace = db.prepare('INSERT INTO faces (id, photoId, personId, boxX, boxY, boxW, boxH, descriptor) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+              const markScanned = db.prepare('UPDATE photos SET facesScanned = 1 WHERE id = ?')
+
+              db.transaction(() => {
+                for (const p of newPeople) {
+                  insertPerson.run(p.id, p.coverPhotoId)
+                }
+                for (const f of faces) {
+                  insertFace.run(f.id, f.photoId, f.personId, f.boxX, f.boxY, f.boxW, f.boxH, f.descriptor)
+                }
+                for (const photo of photosNeedingFaces) {
+                  markScanned.run(photo.id)
+                }
+              })()
+
+              resolve()
+            }
+          })
+
+          worker.on('error', reject)
+          worker.on('exit', (code: number) => {
+            if (code !== 0) reject(new Error(`Worker stopped with exit code ${code}`))
+          })
+        }).catch(err => {
+          console.error('[Scanner] Face detection worker failed', err)
+        })
+      }
+    }
+
     // Send completion
     window?.webContents.send(IPC_CHANNELS.SCAN_PROGRESS, {
       status: 'complete',
@@ -197,6 +306,9 @@ export function registerLibraryHandlers(db: Database.Database): void {
       processed: totalProcessed,
       total: totalProcessed
     })
+
+    // Notify all views to refresh
+    window?.webContents.send('library:updated')
   })
 
   // Get photos with optional filters
@@ -231,6 +343,21 @@ export function registerLibraryHandlers(db: Database.Database): void {
         WHERE pa.albumId = ? OR p.physicalAlbumId = ?
       `
       params.push(filters.albumId, filters.albumId)
+      if (!filters?.trashed) {
+        conditions.push('p.trashed = 0')
+      }
+    } else if (filters?.personId) {
+      query = `
+        SELECT p.*,
+          GROUP_CONCAT(DISTINCT pt.tag) as tagList,
+          GROUP_CONCAT(DISTINCT pa.albumId) as albumIdList
+        FROM photos p
+        LEFT JOIN photo_tags pt ON p.id = pt.photoId
+        LEFT JOIN photo_albums pa ON p.id = pa.photoId
+        JOIN faces f ON p.id = f.photoId
+        WHERE f.personId = ?
+      `
+      params.push(filters.personId)
       if (!filters?.trashed) {
         conditions.push('p.trashed = 0')
       }
@@ -271,7 +398,7 @@ export function registerLibraryHandlers(db: Database.Database): void {
     }
 
     if (conditions.length > 0) {
-      if (filters?.albumId) {
+      if (filters?.albumId || filters?.personId) {
         query += ' AND ' + conditions.join(' AND ')
       } else {
         query += ' WHERE ' + conditions.join(' AND ')
@@ -337,7 +464,7 @@ export function registerLibraryHandlers(db: Database.Database): void {
       GROUP BY p.id
     `).all() as (Photo & { tagList: string | null; albumIdList: string | null; phash: string })[]
 
-    const formattedPhotos = photos.map(row => ({
+    const formattedPhotos: Photo[] = photos.map(row => ({
       ...row,
       trashed: Boolean(row.trashed),
       rating: row.rating || 0,
@@ -345,41 +472,49 @@ export function registerLibraryHandlers(db: Database.Database): void {
       albumIds: row.albumIdList ? row.albumIdList.split(',') : []
     }))
 
-    // 2. Group by visual similarity
-    const exactDuplicates = new Map<string, Photo[]>()
-    const groups: Photo[][] = []
-    const processed = new Set<string>()
-
-    const { calculateHammingDistance } = await import('../services/duplicates')
-
-    // Find groups of duplicates (distance <= 5 usually means visually similar, but let's be strict: <= 2)
+    // 2. Group by visual similarity using a Background Worker to prevent UI freezing
+    // We only pass the minimum required properties to the worker to keep IPC fast
+    const workerPayload = formattedPhotos.map(p => ({ id: p.id, phash: p.phash, fileSize: p.fileSize }))
     const THRESHOLD = 2
 
-    for (let i = 0; i < formattedPhotos.length; i++) {
-      const p1 = formattedPhotos[i]
-      if (processed.has(p1.id)) continue
+    return new Promise((resolve, reject) => {
+      const { Worker } = require('worker_threads')
+      const path = require('path')
+      
+      // We rely on the `duplicatesWorker` entry point dynamically bundled into `out/main`
+      const workerPath = path.join(__dirname, 'duplicatesWorker.js')
 
-      const group = [p1]
-      processed.add(p1.id)
+      const worker = new Worker(workerPath, {
+        workerData: { photos: workerPayload, threshold: THRESHOLD }
+      })
 
-      for (let j = i + 1; j < formattedPhotos.length; j++) {
-        const p2 = formattedPhotos[j]
-        if (processed.has(p2.id)) continue
-
-        const dist = calculateHammingDistance(p1.phash, p2.phash)
-        if (dist <= THRESHOLD) {
-          group.push(p2)
-          processed.add(p2.id)
+      worker.on('message', (message: { type: string, data: any }) => {
+        if (message.type === 'progress') {
+          // Send progress to UI if ever implemented, e.g:
+          // window?.webContents.send(IPC_CHANNELS.DUPLICATE_SCAN_PROGRESS, message.data)
+        } else if (message.type === 'done') {
+          // Re-hydrate full Photo objects using the returned ID groups
+          const groups: Photo[][] = []
+          const groupedIds = message.data as string[][]
+          
+          for (const idGroup of groupedIds) {
+            const photoGroup = idGroup
+              .map(id => formattedPhotos.find(p => p.id === id))
+              .filter((p): p is Photo => p !== undefined)
+            
+            if (photoGroup.length > 1) {
+              groups.push(photoGroup)
+            }
+          }
+          
+          resolve({ groups, exactDuplicates: new Map() })
         }
-      }
+      })
 
-      if (group.length > 1) {
-        // Sort group by file size descending (keep highest quality usually)
-        group.sort((a, b) => b.fileSize - a.fileSize)
-        groups.push(group)
-      }
-    }
-
-    return groups // Array of Photo arrays, each inner array is a duplicate group
+      worker.on('error', reject)
+      worker.on('exit', (code: number) => {
+        if (code !== 0) reject(new Error(`Worker stopped with exit code ${code}`))
+      })
+    })
   })
 }

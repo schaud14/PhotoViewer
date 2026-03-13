@@ -9,6 +9,7 @@ import { registerTrashHandlers } from './ipc/trash'
 import { registerSettingsHandlers } from './ipc/settings'
 import { registerEditorHandlers } from './ipc/editor'
 import { registerLightTableHandlers } from './ipc/lightTable'
+import { registerFacesHandlers } from './ipc/faces'
 import { startFileWatcher } from './services/scanner'
 
 let mainWindow: BrowserWindow | null = null
@@ -62,6 +63,7 @@ app.whenReady().then(async () => {
   registerSettingsHandlers()
   registerEditorHandlers(db)
   registerLightTableHandlers(db)
+  registerFacesHandlers()
 
   // Start file watcher
   startFileWatcher(db, () => {

@@ -10,9 +10,16 @@ import sharp from 'sharp'
  */
 export async function generatePHash(imagePath: string): Promise<string | null> {
   try {
-    const { data } = await sharp(imagePath)
-      .resize(8, 8, { fit: 'fill' })
+    const { data } = await sharp(imagePath, { 
+      failOnError: false 
+    })
+      .resize(8, 8, { 
+        fit: 'fill',
+        kernel: 'nearest', // Fastest possible interpolation
+        fastShrinkOnLoad: true 
+      })
       .grayscale()
+      .normalize() // Stretch contrast to ensure distinct binary hashing
       .raw()
       .toBuffer({ resolveWithObject: true })
 

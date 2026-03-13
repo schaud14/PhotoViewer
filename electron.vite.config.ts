@@ -8,7 +8,9 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/main/index.ts')
+          index: resolve(__dirname, 'src/main/index.ts'),
+          facesWorker: resolve(__dirname, 'src/main/services/facesWorker.ts'),
+          duplicatesWorker: resolve(__dirname, 'src/main/services/duplicatesWorker.ts')
         }
       }
     }

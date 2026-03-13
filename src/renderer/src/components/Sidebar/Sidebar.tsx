@@ -27,6 +27,7 @@ import {
   FilterFrames as DuplicatesIcon,
   Add as AddIcon, // Added for Light Tables
   Dashboard, // Added for Light Tables
+  People as PeopleIcon, // Added for Faces
 } from '@mui/icons-material'
 import { useUIStore } from '../../stores/uiStore'
 import { useAlbumStore } from '../../stores/albumStore'
@@ -191,6 +192,20 @@ export default function Sidebar({ sourceFolders, onRemoveFolder }: SidebarProps)
               <DuplicatesIcon color={sidebarSection === 'duplicates' ? 'primary' : 'inherit'} />
             </ListItemIcon>
             <ListItemText primary="Duplicates" />
+          </ListItemButton>
+
+          {/* People / Faces */}
+          <ListItemButton
+            selected={sidebarSection === 'people'}
+            onClick={() => {
+              setSidebarSection('people')
+              setFilters({})
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <PeopleIcon color={sidebarSection === 'people' ? 'primary' : 'inherit'} />
+            </ListItemIcon>
+            <ListItemText primary="People" />
           </ListItemButton>
 
           {/* Favorites - Priority Virtual Album */}

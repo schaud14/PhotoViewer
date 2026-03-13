@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export type ViewMode = 'grid' | 'list'
 export type ThumbnailSize = 'small' | 'medium' | 'large' | 'xl'
-export type SidebarSection = 'all' | 'folders' | 'album' | 'trash' | 'duplicates'
+export type SidebarSection = 'all' | 'folders' | 'album' | 'trash' | 'duplicates' | 'people'
 
 interface UIState {
   viewMode: ViewMode

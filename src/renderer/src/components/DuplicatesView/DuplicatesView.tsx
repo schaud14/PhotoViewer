@@ -12,13 +12,25 @@ export default function DuplicatesView() {
 
   const loadDuplicates = async () => {
     setLoading(true)
+    console.log('[DuplicatesView] Fetching duplicates...')
     try {
       if (window.api?.getDuplicates) {
-        const groups = await window.api.getDuplicates()
-        setDuplicateGroups(groups)
+        // The API returns { groups: Photo[][], exactDuplicates: Map }
+        const result = await window.api.getDuplicates() as any
+        console.log('[DuplicatesView] Received result:', result)
+        
+        const groups = result.groups || result // Fallback if it's already an array
+        
+        if (Array.isArray(groups)) {
+          console.log(`[DuplicatesView] Found ${groups.length} groups`)
+          setDuplicateGroups(groups)
+        } else {
+          console.warn('[DuplicatesView] Unexpected result format:', result)
+          setDuplicateGroups([])
+        }
       }
     } catch (err) {
-      console.error('Failed to load duplicates:', err)
+      console.error('[DuplicatesView] Failed to load duplicates:', err)
     } finally {
       setLoading(false)
     }
@@ -88,42 +100,57 @@ export default function DuplicatesView() {
         </Button>
       </Box>
 
-      {duplicateGroups.map((group, index) => (
-        <Box key={index} sx={{ mb: 4, bgcolor: 'background.paper', borderRadius: 2, p: 2, boxShadow: 1 }}>
-          <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary' }}>
-            Group {index + 1} — {group.length} Photos
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 1 }}>
-            {group.map((photo, pIdx) => (
-              <Box key={photo.id} sx={{ position: 'relative', width: 200, flexShrink: 0 }}>
-                <img
-                  src={getImageUrl(photo)}
-                  alt={photo.fileName}
-                  style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: '8px' }}
-                />
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="caption" noWrap display="block" title={photo.fileName}>{photo.fileName}</Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    {(photo.fileSize / (1024 * 1024)).toFixed(1)} MB • {photo.width}x{photo.height}
-                  </Typography>
-                  {pIdx === 0 && (
-                    <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 600 }}>Best Quality</Typography>
-                  )}
-                </Box>
-                <Tooltip title="Move to Trash">
-                  <IconButton 
-                    size="small" 
-                    onClick={() => handleDelete(photo.id)}
-                    sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.5)', '&:hover': { bgcolor: 'error.main' } }}
-                  >
-                    <DeleteIcon fontSize="small" sx={{ color: '#fff' }} />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            ))}
+      {duplicateGroups.map((group, index) => {
+        if (!group || !Array.isArray(group)) {
+          console.error(`[DuplicatesView] Group at index ${index} is invalid:`, group)
+          return null
+        }
+        
+        return (
+          <Box key={index} sx={{ mb: 4, bgcolor: 'background.paper', borderRadius: 2, p: 2, boxShadow: 1 }}>
+            <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary' }}>
+              Group {index + 1} — {group.length} Photos
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 1 }}>
+              {group.map((photo, pIdx) => {
+                if (!photo) return null
+                
+                return (
+                  <Box key={photo.id} sx={{ position: 'relative', width: 200, flexShrink: 0 }}>
+                    <img
+                      src={getImageUrl(photo)}
+                      alt={photo.fileName || 'Unknown'}
+                      style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: '8px' }}
+                      onError={(e) => {
+                        console.error(`[DuplicatesView] Failed to load image: ${photo.absolutePath}`)
+                        e.currentTarget.src = 'https://via.placeholder.com/200x140?text=Error'
+                      }}
+                    />
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="caption" noWrap display="block" title={photo.fileName}>{photo.fileName || 'Unknown'}</Typography>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {photo.fileSize ? (photo.fileSize / (1024 * 1024)).toFixed(1) : '0'} MB • {photo.width || '?'}x{photo.height || '?'}
+                      </Typography>
+                      {pIdx === 0 && (
+                        <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 600 }}>Best Quality</Typography>
+                      )}
+                    </Box>
+                    <Tooltip title="Move to Trash">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleDelete(photo.id)}
+                        sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.5)', '&:hover': { bgcolor: 'error.main' } }}
+                      >
+                        <DeleteIcon fontSize="small" sx={{ color: '#fff' }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                )
+              })}
+            </Box>
           </Box>
-        </Box>
-      ))}
+        )
+      })}
     </Box>
   )
 }

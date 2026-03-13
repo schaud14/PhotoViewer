@@ -27,6 +27,8 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const setTheme = useSettingsStore((s) => s.setTheme)
   const heicConversion = useSettingsStore((s) => s.heicConversion)
   const setHeicConversion = useSettingsStore((s) => s.setHeicConversion)
+  const enableFaceDetection = useSettingsStore((s) => s.enableFaceDetection)
+  const setEnableFaceDetection = useSettingsStore((s) => s.setEnableFaceDetection)
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -73,6 +75,28 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           />
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4, mt: -0.5 }}>
             Automatically converts Apple HEIC photos to standard JPEG when copying into physical albums or importing. The original files in source folders are never modified.
+          </Typography>
+        </Box>
+
+        <Divider />
+
+        {/* Machine Learning Settings */}
+        <Box>
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+            Machine Learning
+          </Typography>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={enableFaceDetection}
+                onChange={(e) => setEnableFaceDetection(e.target.checked)}
+                color="secondary"
+              />
+            }
+            label="Enable local Face Detection"
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4, mt: -0.5 }}>
+            Automatically scans your photos to detect and cluster faces. Processing runs entirely offline on your device in a background thread.
           </Typography>
         </Box>
 

@@ -55,6 +55,30 @@ export interface LightTablePhoto {
   photo?: Photo
 }
 
+// Phase 6: Face Detection
+export interface Person {
+  id: string
+  name: string | null
+  coverPhotoId: string | null
+  faceCount?: number
+}
+
+export interface FaceBox {
+  id: string
+  photoId: string
+  personId: string | null
+  boxX: number
+  boxY: number
+  boxW: number
+  boxH: number
+  descriptor: string // JSON representation of Float32Array
+}
+
+export interface AppSettings {
+  id: number
+  enableFaceDetection: boolean
+}
+
 export interface SourceFolder {
   id: string
   path: string
@@ -71,6 +95,7 @@ export interface PhotoFilters {
   sortOrder?: 'asc' | 'desc'
   minRating?: number
   colorLabel?: string
+  personId?: string
 }
 
 export interface ScanProgress {
@@ -161,4 +186,11 @@ export const IPC_CHANNELS = {
   UPDATE_LIGHT_TABLE_PHOTO: 'lightTable:update-photo',
   REMOVE_PHOTO_FROM_LIGHT_TABLE: 'lightTable:remove-photo',
   DELETE_LIGHT_TABLE: 'lightTable:delete',
+
+  // Faces
+  GET_PEOPLE: 'faces:get-people',
+  GET_FACES_FOR_PERSON: 'faces:get-person-faces',
+  RENAME_PERSON: 'faces:rename-person',
+  SET_COVER_PHOTO: 'faces:set-cover',
+  RESET_FACES: 'faces:reset-all',
 } as const

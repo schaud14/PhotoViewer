@@ -27,6 +27,7 @@ const SCHEMA_SQL = `
     rating INTEGER DEFAULT 0,
     colorLabel TEXT,
     phash TEXT,
+    facesScanned INTEGER DEFAULT 0,
     FOREIGN KEY (physicalAlbumId) REFERENCES albums(id) ON DELETE SET NULL
   );
 
@@ -79,11 +80,37 @@ const SCHEMA_SQL = `
     FOREIGN KEY (photoId) REFERENCES photos(id) ON DELETE CASCADE
   );
 
+  CREATE TABLE IF NOT EXISTS people (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    coverPhotoId TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS faces (
+    id TEXT PRIMARY KEY,
+    photoId TEXT NOT NULL,
+    personId TEXT,
+    boxX REAL,
+    boxY REAL,
+    boxW REAL,
+    boxH REAL,
+    descriptor TEXT,
+    FOREIGN KEY (photoId) REFERENCES photos(id) ON DELETE CASCADE,
+    FOREIGN KEY (personId) REFERENCES people(id) ON DELETE SET NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS app_settings (
+    id INTEGER PRIMARY KEY CHECK(id = 1),
+    enableFaceDetection INTEGER DEFAULT 0
+  );
+
   CREATE INDEX IF NOT EXISTS idx_photos_trashed ON photos(trashed);
   CREATE INDEX IF NOT EXISTS idx_photos_physical_album ON photos(physicalAlbumId);
   CREATE INDEX IF NOT EXISTS idx_photos_filename ON photos(fileName);
   CREATE INDEX IF NOT EXISTS idx_photo_tags_tag ON photo_tags(tag);
   CREATE INDEX IF NOT EXISTS idx_photo_albums_album ON photo_albums(albumId);
+  CREATE INDEX IF NOT EXISTS idx_faces_photoId ON faces(photoId);
+  CREATE INDEX IF NOT EXISTS idx_faces_personId ON faces(personId);
 `
 
 export function initDatabase(): Database.Database {
@@ -117,6 +144,9 @@ export function initDatabase(): Database.Database {
       console.log('[DB] Created default Favorites album')
     }
 
+    // Ensure default settings exist
+    db.prepare(`INSERT OR IGNORE INTO app_settings (id, enableFaceDetection) VALUES (1, 0)`).run()
+
     // Migrations: add columns if they don't exist (for existing databases)
     try {
       db.exec('ALTER TABLE photos ADD COLUMN rating INTEGER DEFAULT 0')
@@ -129,6 +159,10 @@ export function initDatabase(): Database.Database {
     try {
       db.exec('ALTER TABLE photos ADD COLUMN phash TEXT')
       console.log('[DB] Added phash column')
+    } catch { /* column already exists */ }
+    try {
+      db.exec('ALTER TABLE photos ADD COLUMN facesScanned INTEGER DEFAULT 0')
+      console.log('[DB] Added facesScanned column')
     } catch { /* column already exists */ }
 
     // Run index creation after migrations ensure the columns exist
