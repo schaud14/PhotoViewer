@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, shell, nativeImage } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDatabase } from './db/database'
@@ -50,6 +50,13 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  // Set Dock icon on macOS
+  if (process.platform === 'darwin') {
+    const iconPath = join(__dirname, '../../resources/icon.png')
+    const image = nativeImage.createFromPath(iconPath)
+    app.dock.setIcon(image)
+  }
+
   // Set app user model id for Windows
   electronApp.setAppUserModelId('com.photoviewer')
 
