@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export type ViewMode = 'grid' | 'list'
 export type ThumbnailSize = 'small' | 'medium' | 'large' | 'xl'
-export type SidebarSection = 'all' | 'folders' | 'album' | 'trash' | 'duplicates' | 'people'
+export type SidebarSection = 'all' | 'folders' | 'album' | 'trash' | 'duplicates' | 'people' | 'best-shots' | 'ai-tag'
 
 interface UIState {
   viewMode: ViewMode
@@ -11,6 +11,7 @@ interface UIState {
   sidebarSection: SidebarSection
   photoViewerOpen: boolean
   searchText: string
+  selectionMode: boolean
 
   // Actions
   setViewMode: (mode: ViewMode) => void
@@ -20,6 +21,7 @@ interface UIState {
   setSidebarSection: (section: SidebarSection) => void
   setPhotoViewerOpen: (open: boolean) => void
   setSearchText: (text: string) => void
+  setSelectionMode: (mode: boolean) => void
 }
 
 const THUMBNAIL_SIZES: Record<ThumbnailSize, number> = {
@@ -36,6 +38,7 @@ export const useUIStore = create<UIState>((set) => ({
   sidebarSection: 'all',
   photoViewerOpen: false,
   searchText: '',
+  selectionMode: false,
 
   setViewMode: (mode) => set({ viewMode: mode }),
   setThumbnailSize: (size) => set({ thumbnailSize: size }),
@@ -44,6 +47,7 @@ export const useUIStore = create<UIState>((set) => ({
   setSidebarSection: (section) => set({ sidebarSection: section }),
   setPhotoViewerOpen: (open) => set({ photoViewerOpen: open }),
   setSearchText: (text) => set({ searchText: text }),
+  setSelectionMode: (mode) => set({ selectionMode: mode }),
 }))
 
 export { THUMBNAIL_SIZES }

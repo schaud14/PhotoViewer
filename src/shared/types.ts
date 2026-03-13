@@ -23,6 +23,10 @@ export interface Photo {
   phash?: string
   tags: string[]
   albumIds: string[]
+  // Phase 10: Local AI Metadata
+  aestheticScore?: number
+  aiTags?: string[] // Added for classification
+  aiScanned?: boolean // Added to track background processing status
 }
 
 export interface Album {
@@ -96,6 +100,8 @@ export interface PhotoFilters {
   minRating?: number
   colorLabel?: string
   personId?: string
+  aiTag?: string
+  minAestheticScore?: number
 }
 
 export interface ScanProgress {

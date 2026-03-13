@@ -32,6 +32,8 @@ import {
   Settings as SettingsIcon,
   Close as CloseIcon,
   Sort as SortIcon,
+  AutoFixHigh as AIPIcon,
+  CheckCircleOutline as SelectModeIcon,
 } from '@mui/icons-material'
 import { useUIStore, ViewMode, ThumbnailSize } from '../../stores/uiStore'
 import { useLibraryStore } from '../../stores/libraryStore'
@@ -57,10 +59,16 @@ export default function AppToolbar({ onAddFolder, onCreateAlbum }: ToolbarProps)
   const isScanning = useLibraryStore((s) => s.isScanning)
   const scanProgress = useLibraryStore((s) => s.scanProgress)
   const startScan = useLibraryStore((s) => s.startScan)
+  const selectionMode = useUIStore((s) => s.selectionMode)
+  const setSelectionMode = useUIStore((s) => s.setSelectionMode)
   const setFilters = useLibraryStore((s) => s.setFilters)
   const fetchPhotos = useLibraryStore((s) => s.fetchPhotos)
   const selectedPhotoIds = useLibraryStore((s) => s.selectedPhotoIds)
   const clearSelection = useLibraryStore((s) => s.clearSelection)
+  const isAIScanning = useLibraryStore((s) => s.isAIScanning)
+  const aiScanProgress = useLibraryStore((s) => s.aiScanProgress)
+  const startAIScan = useLibraryStore((s) => s.startAIScan)
+  const setAIScanProgress = useLibraryStore((s) => s.setAIScanProgress)
 
   const [albumMenuAnchor, setAlbumMenuAnchor] = useState<null | HTMLElement>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -105,6 +113,14 @@ export default function AppToolbar({ onAddFolder, onCreateAlbum }: ToolbarProps)
     }, 300)
   }, [setSearchText, setFilters, setSidebarSection])
 
+  // Listen for AI progress
+  React.useEffect(() => {
+    if (!window.api?.onAIScanProgress) return
+    return window.api.onAIScanProgress((progress) => {
+      setAIScanProgress(progress)
+    })
+  }, [setAIScanProgress])
+
   return (
     <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
       <MuiToolbar sx={{ gap: 1.5 }}>
@@ -143,6 +159,32 @@ export default function AppToolbar({ onAddFolder, onCreateAlbum }: ToolbarProps)
             </IconButton>
           </Box>
         )}
+        
+        {/* Selection Mode Toggle */}
+        <Tooltip title={selectionMode ? "Exit Selection Mode" : "Enter Selection Mode"}>
+          <Button
+            variant={selectionMode ? "contained" : "outlined"}
+            size="small"
+            startIcon={<SelectModeIcon />}
+            onClick={() => setSelectionMode(!selectionMode)}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 2,
+              mr: 1,
+              ...(selectionMode ? {
+                background: 'linear-gradient(135deg, #2196F3, #00BCD4)',
+                boxShadow: '0 2px 8px rgba(33, 150, 243, 0.4)',
+              } : {
+                borderColor: 'divider',
+                color: 'text.secondary'
+              })
+            }}
+          >
+            Select
+          </Button>
+        </Tooltip>
 
         {/* Add Folder */}
         <Tooltip title="Add Source Folder">
@@ -176,6 +218,17 @@ export default function AppToolbar({ onAddFolder, onCreateAlbum }: ToolbarProps)
         <Tooltip title="Scan Source Folders">
           <IconButton color="inherit" onClick={startScan} disabled={isScanning}>
             <ScanIcon />
+          </IconButton>
+        </Tooltip>
+
+        {/* AI Scan */}
+        <Tooltip title="Process with AI (Object Detection & Search)">
+          <IconButton 
+            color={isAIScanning ? "primary" : "inherit"} 
+            onClick={startAIScan} 
+            disabled={isAIScanning || isScanning}
+          >
+            <AIPIcon />
           </IconButton>
         </Tooltip>
 
@@ -324,6 +377,16 @@ export default function AppToolbar({ onAddFolder, onCreateAlbum }: ToolbarProps)
           variant={scanProgress?.total ? 'determinate' : 'indeterminate'}
           value={scanProgress?.total ? (scanProgress.processed / scanProgress.total) * 100 : undefined}
           sx={{ height: 2 }}
+        />
+      )}
+
+      {/* AI progress bar */}
+      {isAIScanning && (
+        <LinearProgress
+          color="secondary"
+          variant={aiScanProgress?.total ? 'determinate' : 'indeterminate'}
+          value={aiScanProgress?.total ? (aiScanProgress.current / aiScanProgress.total) * 100 : undefined}
+          sx={{ height: 2, bgcolor: 'rgba(124, 77, 255, 0.1)', '& .MuiLinearProgress-bar': { background: 'linear-gradient(90deg, #7C4DFF, #00E5FF)' } }}
         />
       )}
     </AppBar>

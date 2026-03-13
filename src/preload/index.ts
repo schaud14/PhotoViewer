@@ -160,6 +160,22 @@ const api = {
 
   resetFaces: (): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.RESET_FACES),
+
+  // AI
+  scanLibraryAI: (): Promise<any> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SCAN_LIBRARY + ':ai'),
+
+  onAIScanProgress: (callback: (progress: { current: number; total: number }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: { current: number; total: number }) => callback(progress)
+    ipcRenderer.on('library:ai-progress', handler)
+    return () => ipcRenderer.removeListener('library:ai-progress', handler)
+  },
+
+  getAITags: (): Promise<{ tag: string; count: number; avgConfidence: number }[]> =>
+    ipcRenderer.invoke('ai:get-tags'),
+
+  getBestShots: (limit?: number): Promise<Photo[]> =>
+    ipcRenderer.invoke('ai:get-best-shots', limit),
 }
 
 contextBridge.exposeInMainWorld('api', api)

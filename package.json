@@ -1,6 +1,6 @@
 {
   "name": "photo-viewer",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A Picasa-like desktop photo viewer and organizer",
   "main": "./out/main/index.js",
   "scripts": {

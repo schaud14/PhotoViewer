@@ -28,7 +28,22 @@ const SCHEMA_SQL = `
     colorLabel TEXT,
     phash TEXT,
     facesScanned INTEGER DEFAULT 0,
+    aestheticScore REAL DEFAULT 0,
     FOREIGN KEY (physicalAlbumId) REFERENCES albums(id) ON DELETE SET NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS embeddings (
+    photoId TEXT PRIMARY KEY,
+    vector BLOB,
+    FOREIGN KEY(photoId) REFERENCES photos(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS ai_tags (
+    photoId TEXT,
+    tag TEXT,
+    confidence REAL,
+    PRIMARY KEY(photoId, tag),
+    FOREIGN KEY(photoId) REFERENCES photos(id) ON DELETE CASCADE
   );
 
   CREATE TABLE IF NOT EXISTS albums (
@@ -111,6 +126,7 @@ const SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_photo_albums_album ON photo_albums(albumId);
   CREATE INDEX IF NOT EXISTS idx_faces_photoId ON faces(photoId);
   CREATE INDEX IF NOT EXISTS idx_faces_personId ON faces(personId);
+  CREATE INDEX IF NOT EXISTS idx_ai_tags_tag ON ai_tags(tag);
 `
 
 export function initDatabase(): Database.Database {
@@ -164,10 +180,15 @@ export function initDatabase(): Database.Database {
       db.exec('ALTER TABLE photos ADD COLUMN facesScanned INTEGER DEFAULT 0')
       console.log('[DB] Added facesScanned column')
     } catch { /* column already exists */ }
+    try {
+      db.exec('ALTER TABLE photos ADD COLUMN aestheticScore REAL DEFAULT 0')
+      console.log('[DB] Added aestheticScore column')
+    } catch { /* column already exists */ }
 
     // Run index creation after migrations ensure the columns exist
     db.exec(`
       CREATE INDEX IF NOT EXISTS idx_photos_phash ON photos(phash);
+      CREATE INDEX IF NOT EXISTS idx_photos_aesthetic ON photos(aestheticScore);
     `)
 
   } catch (err) {

@@ -320,6 +320,7 @@ export function registerLibraryHandlers(db: Database.Database): void {
       FROM photos p
       LEFT JOIN photo_tags pt ON p.id = pt.photoId
       LEFT JOIN photo_albums pa ON p.id = pa.photoId
+      LEFT JOIN ai_tags ait ON p.id = ait.photoId
     `
     const conditions: string[] = []
     const params: unknown[] = []
@@ -335,11 +336,13 @@ export function registerLibraryHandlers(db: Database.Database): void {
       query = `
         SELECT p.*,
           GROUP_CONCAT(DISTINCT pt.tag) as tagList,
-          GROUP_CONCAT(DISTINCT pa2.albumId) as albumIdList
+          GROUP_CONCAT(DISTINCT pa2.albumId) as albumIdList,
+          GROUP_CONCAT(DISTINCT ait.tag) as aiTagList
         FROM photos p
         LEFT JOIN photo_tags pt ON p.id = pt.photoId
         LEFT JOIN photo_albums pa2 ON p.id = pa2.photoId
         LEFT JOIN photo_albums pa ON p.id = pa.photoId
+        LEFT JOIN ai_tags ait ON p.id = ait.photoId
         WHERE pa.albumId = ? OR p.physicalAlbumId = ?
       `
       params.push(filters.albumId, filters.albumId)
@@ -350,10 +353,12 @@ export function registerLibraryHandlers(db: Database.Database): void {
       query = `
         SELECT p.*,
           GROUP_CONCAT(DISTINCT pt.tag) as tagList,
-          GROUP_CONCAT(DISTINCT pa.albumId) as albumIdList
+          GROUP_CONCAT(DISTINCT pa.albumId) as albumIdList,
+          GROUP_CONCAT(DISTINCT ait.tag) as aiTagList
         FROM photos p
         LEFT JOIN photo_tags pt ON p.id = pt.photoId
         LEFT JOIN photo_albums pa ON p.id = pa.photoId
+        LEFT JOIN ai_tags ait ON p.id = ait.photoId
         JOIN faces f ON p.id = f.photoId
         WHERE f.personId = ?
       `
@@ -380,6 +385,16 @@ export function registerLibraryHandlers(db: Database.Database): void {
       const placeholders = filters.tags.map(() => '?').join(',')
       conditions.push(`pt.tag IN (${placeholders})`)
       params.push(...filters.tags)
+    }
+
+    if (filters?.aiTag) {
+      conditions.push('ait.tag = ?')
+      params.push(filters.aiTag)
+    }
+
+    if (filters?.minAestheticScore !== undefined) {
+      conditions.push('p.aestheticScore >= ?')
+      params.push(filters.minAestheticScore)
     }
 
     if (filters?.sourceFolderPath) {
@@ -416,13 +431,14 @@ export function registerLibraryHandlers(db: Database.Database): void {
     }
     query += ` GROUP BY p.id ORDER BY ${sortMapping[sortCol] || sortMapping.dateTaken}`
 
-    const rows = db.prepare(query).all(...params) as (Photo & { tagList: string | null; albumIdList: string | null })[]
+    const rows = db.prepare(query).all(...params) as (Photo & { tagList: string | null; albumIdList: string | null; aiTagList: string | null })[]
 
     return rows.map(row => ({
       ...row,
       trashed: Boolean(row.trashed),
       rating: row.rating || 0,
       tags: row.tagList ? row.tagList.split(',') : [],
+      aiTags: row.aiTagList ? row.aiTagList.split(',') : [],
       albumIds: row.albumIdList ? row.albumIdList.split(',') : []
     }))
   })
@@ -432,13 +448,15 @@ export function registerLibraryHandlers(db: Database.Database): void {
     const row = db.prepare(`
       SELECT p.*,
         GROUP_CONCAT(DISTINCT pt.tag) as tagList,
-        GROUP_CONCAT(DISTINCT pa.albumId) as albumIdList
+        GROUP_CONCAT(DISTINCT pa.albumId) as albumIdList,
+        GROUP_CONCAT(DISTINCT ait.tag) as aiTagList
       FROM photos p
       LEFT JOIN photo_tags pt ON p.id = pt.photoId
       LEFT JOIN photo_albums pa ON p.id = pa.photoId
+      LEFT JOIN ai_tags ait ON p.id = ait.photoId
       WHERE p.id = ?
       GROUP BY p.id
-    `).get(id) as (Photo & { tagList: string | null; albumIdList: string | null }) | undefined
+    `).get(id) as (Photo & { tagList: string | null; albumIdList: string | null; aiTagList: string | null }) | undefined
 
     if (!row) return null
 
@@ -446,6 +464,7 @@ export function registerLibraryHandlers(db: Database.Database): void {
       ...row,
       trashed: Boolean(row.trashed),
       tags: row.tagList ? row.tagList.split(',') : [],
+      aiTags: row.aiTagList ? row.aiTagList.split(',') : [],
       albumIds: row.albumIdList ? row.albumIdList.split(',') : []
     }
   })

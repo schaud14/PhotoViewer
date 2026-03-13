@@ -10,7 +10,8 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/main/index.ts'),
           facesWorker: resolve(__dirname, 'src/main/services/facesWorker.ts'),
-          duplicatesWorker: resolve(__dirname, 'src/main/services/duplicatesWorker.ts')
+          duplicatesWorker: resolve(__dirname, 'src/main/services/duplicatesWorker.ts'),
+          aiWorker: resolve(__dirname, 'src/main/services/aiWorker.ts')
         }
       }
     }

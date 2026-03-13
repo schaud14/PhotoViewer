@@ -10,6 +10,8 @@ interface LibraryState {
   scanProgress: ScanProgress | null
   isScanning: boolean
   isLoading: boolean
+  isAIScanning: boolean
+  aiScanProgress: { current: number; total: number } | null
   deletingIds: Set<string>
 
   // Actions
@@ -22,6 +24,8 @@ interface LibraryState {
   setCurrentPhoto: (id: string | null) => void
   startScan: () => Promise<void>
   setScanProgress: (progress: ScanProgress | null) => void
+  startAIScan: () => Promise<void>
+  setAIScanProgress: (progress: { current: number; total: number } | null) => void
   addDeletingIds: (ids: string[]) => void
   removeDeletingIds: (ids: string[]) => void
 }
@@ -35,6 +39,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   scanProgress: null,
   isScanning: false,
   isLoading: false,
+  isAIScanning: false,
+  aiScanProgress: null,
   deletingIds: new Set(),
 
   fetchPhotos: async (filters?: PhotoFilters) => {
@@ -112,6 +118,25 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     set({ scanProgress: progress })
     if (progress?.status === 'complete') {
       set({ isScanning: false })
+      get().fetchPhotos()
+    }
+  },
+  
+  startAIScan: async () => {
+    if (!window.api?.scanLibraryAI) return
+    set({ isAIScanning: true, aiScanProgress: null })
+    try {
+      await window.api.scanLibraryAI()
+    } catch (err) {
+      console.error('AI Scan failed:', err)
+      set({ isAIScanning: false })
+    }
+  },
+
+  setAIScanProgress: (progress) => {
+    set({ aiScanProgress: progress })
+    if (progress && progress.current >= progress.total) {
+      set({ isAIScanning: false })
       get().fetchPhotos()
     }
   },

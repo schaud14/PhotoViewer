@@ -11,6 +11,7 @@ import { registerEditorHandlers } from './ipc/editor'
 import { registerLightTableHandlers } from './ipc/lightTable'
 import { registerFacesHandlers } from './ipc/faces'
 import { startFileWatcher } from './services/scanner'
+import { registerAIHandlers } from './ipc/ai'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -78,6 +79,7 @@ app.whenReady().then(async () => {
   registerEditorHandlers(db)
   registerLightTableHandlers(db)
   registerFacesHandlers()
+  registerAIHandlers(db)
 
   // Start file watcher
   startFileWatcher(db, () => {

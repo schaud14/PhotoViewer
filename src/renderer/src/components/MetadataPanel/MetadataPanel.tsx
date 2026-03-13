@@ -304,8 +304,61 @@ export default function MetadataPanel() {
 
           <Divider sx={{ my: 2 }} />
 
+          {/* AI Analysis */}
+          {photo.aestheticScore !== undefined && (
+            <Accordion disableGutters elevation={0} sx={{ bgcolor: 'transparent', '&:before': { display: 'none' } }}>
+              <AccordionSummary expandIcon={<ExpandMore />} sx={{ px: 0 }}>
+                <Typography variant="subtitle2">Neural Engine Analysis</Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ px: 0 }}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Aesthetic Score</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                    <Box sx={{ 
+                      flexGrow: 1, 
+                      height: 4, 
+                      bgcolor: 'action.hover', 
+                      borderRadius: 2,
+                      overflow: 'hidden'
+                    }}>
+                      <Box sx={{ 
+                        width: `${(photo.aestheticScore || 0) * 100}%`, 
+                        height: '100%', 
+                        bgcolor: (photo.aestheticScore || 0) > 0.7 ? 'success.main' : 'primary.main',
+                        transition: 'width 1s ease-out'
+                      }} />
+                    </Box>
+                    <Typography variant="caption" fontWeight="bold">
+                      {Math.round((photo.aestheticScore || 0) * 100)}%
+                    </Typography>
+                  </Box>
+                </Box>
+                {photo.aiTags && photo.aiTags.length > 0 && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                      AI Generated Tags
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {photo.aiTags.map((tag) => (
+                        <Chip
+                          key={tag}
+                          label={tag}
+                          size="small"
+                          sx={{ textTransform: 'capitalize', fontSize: '0.7rem' }}
+                          variant="outlined"
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+              </AccordionDetails>
+            </Accordion>
+          )}
+
+          <Divider sx={{ my: 1 }} />
+
           {/* Tags */}
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>Tags</Typography>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>Manual Keywords</Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
             {photo.tags.map((tag) => (
               <Chip

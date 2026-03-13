@@ -183,10 +183,13 @@ export default function PhotoGrid({ width, height }: PhotoGridProps) {
     scrollOffset.current = { scrollLeft, scrollTop }
   }, [])
 
+  const selectionMode = useUIStore((s) => s.selectionMode)
+
   const handleClick = useCallback((id: string, e: React.MouseEvent) => {
     if (dragDistance.current > 5) return
     const isMulti = e.metaKey || e.ctrlKey
     const isRange = e.shiftKey
+    
     if (isRange && lastSelectedId.current) {
       const fromIndex = photos.findIndex(p => p.id === lastSelectedId.current)
       const toIndex = photos.findIndex(p => p.id === id)
@@ -196,21 +199,17 @@ export default function PhotoGrid({ width, height }: PhotoGridProps) {
         const rangeIds = photos.slice(start, end + 1).map(p => p.id)
         selectPhotos(rangeIds, isMulti)
       }
-    } else if (isMulti) {
-      // Cmd/Ctrl click: toggle this photo in the selection
+    } else if (isMulti || selectionMode) {
+      // Cmd/Ctrl click OR Selection Mode: toggle this photo in the selection
       selectPhoto(id, true)
-    } else if (selectedPhotoIds.size > 1) {
-      // Multiple selected: plain click opens viewer without clearing selection
-      setCurrentPhoto(id)
-      setPhotoViewerOpen(true)
     } else {
-      // 0 or 1 selected: normal behavior — select this photo and open viewer
-      selectPhoto(id, false)
+      // Normal mode: Single click ONLY opens viewer
+      // It does NOT select the photo anymore
       setCurrentPhoto(id)
       setPhotoViewerOpen(true)
     }
     lastSelectedId.current = id
-  }, [photos, selectPhoto, selectPhotos, setCurrentPhoto, setPhotoViewerOpen, selectedPhotoIds])
+  }, [photos, selectPhoto, selectPhotos, setCurrentPhoto, setPhotoViewerOpen, selectionMode])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const isItem = (e.target as HTMLElement).closest('.photo-grid-item')
@@ -360,9 +359,9 @@ export default function PhotoGrid({ width, height }: PhotoGridProps) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                opacity: isSelected ? 1 : 0,
+                opacity: (isSelected || selectionMode) ? 1 : 0,
                 transition: 'opacity 0.15s, transform 0.15s',
-                transform: isSelected ? 'scale(1)' : 'scale(0.8)',
+                transform: (isSelected || selectionMode) ? 'scale(1)' : 'scale(0.8)',
                 '.photo-grid-item:hover &': { opacity: 1, transform: 'scale(1)' },
                 '&:hover': { transform: 'scale(1.15)' },
                 zIndex: 2,

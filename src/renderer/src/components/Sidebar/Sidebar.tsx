@@ -28,6 +28,8 @@ import {
   Add as AddIcon, // Added for Light Tables
   Dashboard, // Added for Light Tables
   People as PeopleIcon, // Added for Faces
+  AutoAwesome as BestShotsIcon, // Added for AI
+  LocalOffer as TagIcon, // Added for AI
 } from '@mui/icons-material'
 import { useUIStore } from '../../stores/uiStore'
 import { useAlbumStore } from '../../stores/albumStore'
@@ -50,18 +52,35 @@ export default function Sidebar({ sourceFolders, onRemoveFolder }: SidebarProps)
   const fetchAlbums = useAlbumStore((s) => s.fetchAlbums)
   const setFilters = useLibraryStore((s) => s.setFilters)
   const fetchPhotos = useLibraryStore((s) => s.fetchPhotos)
-  const folders = useLibraryStore((state) => state.folders) // Added from diff
-  const lightTables = useLibraryStore((state) => state.lightTables) // Added from diff
-  const fetchLightTables = useLibraryStore((state) => state.fetchLightTables) // Added from diff
+  const filters = useLibraryStore((s) => s.filters)
+  const lightTables = useLibraryStore((state) => state.lightTables)
+  const fetchLightTables = useLibraryStore((state) => state.fetchLightTables)
 
   const [foldersOpen, setFoldersOpen] = React.useState(true)
   const [albumsOpen, setAlbumsOpen] = React.useState(true)
   const [deleteId, setDeleteId] = React.useState<string | null>(null) // Added for delete confirmation
   const [deleteType, setDeleteType] = React.useState<'folder' | 'album' | 'lightTable' | null>(null) // Added for delete confirmation
+  const [aiTags, setAiTags] = React.useState<{ tag: string; count: number }[]>([])
+  const [showSmartTags, setShowSmartTags] = React.useState(true)
 
   useEffect(() => {
     fetchAlbums()
     fetchLightTables() // Added from diff
+    
+    // Fetch AI tags if available
+    if (window.api?.getAITags) {
+      window.api.getAITags().then(setAiTags)
+    }
+  }, [])
+
+  // Listen for library updates to refresh AI tags
+  useEffect(() => {
+    if (!window.api?.onLibraryUpdated) return
+    return window.api.onLibraryUpdated(() => {
+      if (window.api?.getAITags) {
+        window.api.getAITags().then(setAiTags)
+      }
+    })
   }, [])
 
   const virtualAlbums = albums.filter((a) => a.type === 'virtual' && a.id !== 'favorites-album')
@@ -119,37 +138,6 @@ export default function Sidebar({ sourceFolders, onRemoveFolder }: SidebarProps)
       }
     } catch (err) {
       console.error('Drop to album failed', err)
-    }
-  }
-
-  // Added from diff
-  const handleDeleteConfirm = async () => {
-    if (!deleteId || !deleteType) return
-
-    try {
-      if (deleteType === 'folder' && window.api?.removeSourceFolder) {
-        onRemoveFolder(deleteId)
-      } else if (deleteType === 'album' && window.api?.deleteAlbum) {
-        await window.api.deleteAlbum(deleteId)
-        fetchAlbums()
-        if (activeAlbumId === deleteId) {
-          setActiveAlbum(null)
-          setSidebarSection('all')
-          setFilters({ albumId: undefined, sourceFolderPath: undefined, trashed: false })
-        }
-      } else if (deleteType === 'lightTable' && window.api?.deleteLightTable) {
-        await window.api.deleteLightTable(deleteId)
-        fetchLightTables()
-        if (sidebarSection === `lightTable-${deleteId}`) {
-          setSidebarSection('all')
-          setFilters({ albumId: undefined, sourceFolderPath: undefined, trashed: false })
-        }
-      }
-    } catch (err) {
-      console.error('Delete failed:', err)
-    } finally {
-      setDeleteId(null)
-      setDeleteType(null)
     }
   }
 
@@ -367,6 +355,43 @@ export default function Sidebar({ sourceFolders, onRemoveFolder }: SidebarProps)
             <ListItemText primary="Trash" />
           </ListItemButton>
         </List>
+
+        {aiTags.length > 0 && (
+          <>
+            <Divider sx={{ my: 1 }} />
+            <List disablePadding>
+              <ListItemButton onClick={() => setShowSmartTags(!showSmartTags)}>
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <TagIcon />
+                </ListItemIcon>
+                <ListItemText primary="Smart Tags" />
+                {showSmartTags ? <ExpandLess /> : <ExpandMore />}
+              </ListItemButton>
+              <Collapse in={showSmartTags} timeout="auto">
+                <List disablePadding>
+                  {aiTags.map((tag) => (
+                    <ListItemButton
+                      key={tag.tag}
+                      sx={{ pl: 4 }}
+                      selected={filters.aiTag === tag.tag}
+                      onClick={() => {
+                        setSidebarSection('ai-tag')
+                        setFilters({ aiTag: tag.tag, trashed: false, albumId: undefined, sourceFolderPath: undefined })
+                      }}
+                    >
+                      <ListItemText
+                        primary={tag.tag}
+                        secondary={`${tag.count} photos`}
+                        primaryTypographyProps={{ fontSize: '0.875rem', noWrap: true, sx: { textTransform: 'capitalize' } }}
+                        secondaryTypographyProps={{ fontSize: '0.7rem' }}
+                      />
+                    </ListItemButton>
+                  ))}
+                </List>
+              </Collapse>
+            </List>
+          </>
+        )}
       </Box>
     </Drawer>
   )
