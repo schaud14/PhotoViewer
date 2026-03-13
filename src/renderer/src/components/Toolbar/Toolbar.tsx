@@ -109,9 +109,9 @@ export default function AppToolbar({ onAddFolder, onCreateAlbum }: ToolbarProps)
     <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
       <MuiToolbar sx={{ gap: 1.5 }}>
         {/* App Logo & Title */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mr: 1 }}>
-          <img src={logo} alt="PhotoViewer Logo" style={{ width: 32, height: 32, objectFit: 'contain' }} />
-          <Typography variant="h6" sx={{ fontWeight: 700, background: 'linear-gradient(135deg, #7C4DFF, #00E5FF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: 1 }}>
+          <img src={logo} alt="PhotoViewer Logo" style={{ width: 42, height: 42, objectFit: 'contain' }} />
+          <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.5px', background: 'linear-gradient(135deg, #7C4DFF, #00E5FF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             PhotoViewer
           </Typography>
         </Box>
